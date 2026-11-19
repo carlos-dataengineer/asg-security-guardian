@@ -155,10 +155,10 @@ See [Architecture](docs/ARCHITECTURE.md), [Local Core 0.2](docs/LOCAL_CORE_0.2.m
 
 ## Contributing
 
-Contributions are welcome through forks and Pull Requests. The official `main` branch remains under the owner's control; proposals are reviewed before integration. Contributors should include tests, documented threat assumptions, and explicit safety boundaries. Do not submit live malware, credentials, private keys, or personal data.
+Contributions should include tests, documented threat assumptions, and explicit safety boundaries. Proposals are reviewed before integration. Contributors should include tests, documented threat assumptions, and explicit safety boundaries. Do not submit live malware, credentials, private keys, or personal data.
 
 ## License
 
-This project is licensed under the **Apache License 2.0**. You may use, copy, modify, distribute, and create derivative works, including for commercial purposes, provided you comply with the license terms and preserve required notices. The license does not grant permission to use the project's name or trademarks as an endorsement.
+This project is licensed under the **MIT License**. You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software, provided that the copyright notice and permission notice are included in copies or substantial portions of the software.
 
-See the [LICENSE](LICENSE) file for the complete terms. SPDX identifier: `Apache-2.0`.
+The software is provided "as is", without warranty of any kind. See the [LICENSE](LICENSE) file for the complete terms. SPDX identifier: `MIT`.
