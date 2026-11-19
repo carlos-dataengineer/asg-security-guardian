@@ -67,13 +67,13 @@ Untrusted project / Skill / MCP / plugin / files
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\install.ps1
+.\\install.ps1
 ```
 
 For project-local Skill installation:
 
 ```powershell
-.\install.ps1 -Project
+.\\install.ps1 -Project
 ```
 
 ### Linux / macOS
@@ -89,7 +89,7 @@ For project-local Skill installation:
 ./install.sh --project
 ```
 
-Installers copy the Skill and local Protection Core, and create a command wrapper under `~/.asg/bin` or `%USERPROFILE%\.asg\bin`. They do not install services, execute scanned content, configure firewall rules, or change OS security settings. Add the wrapper directory to PATH manually if desired.
+Installers copy the Skill and local Protection Core, and create a command wrapper under `~/.asg/bin` or `%USERPROFILE%\\.asg\\bin`. They do not install services, execute scanned content, configure firewall rules, or change OS security settings. Add the wrapper directory to PATH manually if desired.
 
 ## Usage
 
@@ -155,8 +155,10 @@ See [Architecture](docs/ARCHITECTURE.md), [Local Core 0.2](docs/LOCAL_CORE_0.2.m
 
 ## Contributing
 
-Contributions should include tests, documented threat assumptions, and explicit safety boundaries. Do not submit live malware, credentials, private keys, or personal data.
+Contributions are welcome through forks and Pull Requests. The official `main` branch remains under the owner's control; proposals are reviewed before integration. Contributors should include tests, documented threat assumptions, and explicit safety boundaries. Do not submit live malware, credentials, private keys, or personal data.
 
 ## License
 
-No open-source license has been selected yet. Until a license is added, standard copyright applies; reuse, redistribution, and derivative-work permissions are not granted. A public GitHub repository without a license is publicly viewable but is not automatically open source.
+This project is licensed under the **Apache License 2.0**. You may use, copy, modify, distribute, and create derivative works, including for commercial purposes, provided you comply with the license terms and preserve required notices. The license does not grant permission to use the project's name or trademarks as an endorsement.
+
+See the [LICENSE](LICENSE) file for the complete terms. SPDX identifier: `Apache-2.0`.
