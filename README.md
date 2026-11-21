@@ -122,6 +122,10 @@ No Windows, use `py -3` no lugar de `python3`, quando necessário. O estado loca
 
 A quarentena exige terminal interativo e confirmação digitada exatamente como `APPROVE REQUEST_ID`. Ela cria uma cópia; não move, apaga nem neutraliza o original.
 
+## Como chamar a Skill
+
+Depois de instalar a Skill no Claude Code, abra uma nova sessão e use `/asg-security-guardian` para iniciar uma investigação. Você também pode descrever diretamente o arquivo ou repositório que deseja analisar. A chamada da Skill não autoriza execução, instalação, exclusão ou alteração do alvo; essas ações continuam dependendo de aprovação específica.
+
 ## Testes
 
 ```bash
