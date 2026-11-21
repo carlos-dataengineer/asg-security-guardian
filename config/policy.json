@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.1",
+  "product": "ASG Security Guardian",
+  "deployment": "local_only",
+  "default_mode": "read_only",
+  "automatic_remediation": false,
+  "user_approval": "required_for_every_action",
+  "approval_scope": "single_exact_action_single_exact_target_single_use",
+  "approval_expiry_seconds": 900,
+  "untrusted_code_execution": "deny",
+  "untrusted_network_access": "deny",
+  "quarantine_mode": "copy_only_original_preserved",
+  "secret_values_storage": false,
+  "secret_values_reporting": false,
+  "fail_closed": true,
+  "telemetry_failure": "inconclusive",
+  "cloud_upload": "disabled",
+  "remote_threat_intelligence": "disabled_until_explicit_user_opt_in"
+}
