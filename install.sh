@@ -1,44 +1,41 @@
-#!/usr/bin/env bash
-set -euo pipefail
-MODE="${1:---user}"
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-command -v python3 >/dev/null 2>&1 || { echo "Python 3.10+ não encontrado." >&2; exit 1; }
-python3 - <<'PY'
-import sys
-if sys.version_info < (3, 10): raise SystemExit("Python 3.10+ é obrigatório.")
-print("Python", sys.version.split()[0], "OK")
-PY
-SKILL_SOURCE="$ROOT/.claude/skills/asg-security-guardian"
-[[ -d "$SKILL_SOURCE" ]] || { echo "Skill não encontrada: $SKILL_SOURCE" >&2; exit 1; }
-if [[ "$MODE" == "--project" ]]; then
-  SKILL_DEST="$PWD/.claude/skills/asg-security-guardian"
-else
-  SKILL_DEST="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills/asg-security-guardian"
-fi
-APP="$HOME/.asg/app"
-BIN="$HOME/.asg/bin"
-[[ ! -e "$SKILL_DEST" ]] || { echo "Skill já existe: $SKILL_DEST. Faça backup/remova manualmente antes de reinstalar." >&2; exit 1; }
-[[ ! -e "$APP" ]] || { echo "Aplicação já existe: $APP. Faça backup/remova manualmente antes de reinstalar." >&2; exit 1; }
-mkdir -p "$(dirname "$SKILL_DEST")" "$BIN" "$(dirname "$APP")"
-cp -R "$SKILL_SOURCE" "$SKILL_DEST"
-mkdir -p "$APP/protection_core"
-cp "$ROOT/protection_core/"*.py "$APP/protection_core/"
-cp -R "$ROOT/config" "$APP/config"
-cat > "$BIN/asg" <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-ASG_ROOT="$APP"
-if [[ \$# -lt 1 ]]; then echo "Uso: asg <scan|baseline|check|watch|propose-quarantine|approve|verify-audit> [argumentos]"; exit 2; fi
-COMMAND="\$1"; shift
-case "\$COMMAND" in
-  scan) exec python3 "\$ASG_ROOT/protection_core/asg_guard.py" "\$@" ;;
-  baseline|check|watch|propose-quarantine|approve|verify-audit) exec python3 "\$ASG_ROOT/protection_core/asg_local.py" "\$COMMAND" "\$@" ;;
-  *) echo "Comando desconhecido: \$COMMAND" >&2; exit 2 ;;
+#!/usr/bin/env sh
+# ASG Security Guardian — one-command installer (Linux / macOS / Git Bash).
+#
+#   From a clone:   ./install.sh [--target claude|codex|all] [--lang en] [--add-to-path]
+#   One command:    curl -fsSL https://raw.githubusercontent.com/carlos-dataengineer/asg-security-guardian/main/install.sh | sh
+#
+# Piped mode clones the repository (git required) into ~/.asg-security-guardian/src and runs install.py.
+# Read this file before piping it to a shell — that is exactly the habit ASG asks you to keep.
+set -eu
+
+REPO_URL="${ASG_REPO:-https://github.com/carlos-dataengineer/asg-security-guardian.git}"
+REF="${ASG_REF:-main}"
+SRC="${ASG_STATE:-$HOME/.asg-security-guardian}/src"
+
+PY=""
+for c in python3 python; do
+  if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+    PY="$c"; break
+  fi
+done
+[ -n "$PY" ] || { echo "ASG: Python 3.10+ is required (https://www.python.org/downloads/)." >&2; exit 1; }
+
+HERE=""
+case "$0" in
+  */install.sh|install.sh) HERE="$(cd "$(dirname "$0")" && pwd)" ;;
 esac
-EOF
-chmod +x "$BIN/asg"
-echo "ASG instalado."
-echo "Skill: $SKILL_DEST"
-echo "Core:  $APP"
-echo "CLI:   $BIN/asg"
-echo "Adicione $BIN ao PATH para chamar 'asg' de qualquer pasta."
+
+if [ -n "$HERE" ] && [ -f "$HERE/install.py" ]; then
+  exec "$PY" "$HERE/install.py" "$@"
+fi
+
+command -v git >/dev/null 2>&1 || { echo "ASG: git is required for the one-command install." >&2; exit 1; }
+if [ -d "$SRC/.git" ]; then
+  echo "ASG: updating $SRC ($REF)"
+  git -C "$SRC" fetch --depth 1 origin "$REF" && git -C "$SRC" checkout -q FETCH_HEAD
+else
+  echo "ASG: downloading $REPO_URL ($REF) -> $SRC"
+  mkdir -p "$(dirname "$SRC")"
+  git clone -q --depth 1 --branch "$REF" "$REPO_URL" "$SRC"
+fi
+exec "$PY" "$SRC/install.py" "$@"

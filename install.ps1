@@ -1,63 +1,54 @@
-[CmdletBinding()]
-param([switch]$Project)
+# ASG Security Guardian — one-command installer (Windows PowerShell 5.1+ / PowerShell 7).
+#
+#   From a clone:   .\install.ps1 [-Target claude|codex|all] [-Lang en] [-AddToPath]
+#   One command:    irm https://raw.githubusercontent.com/carlos-dataengineer/asg-security-guardian/main/install.ps1 | iex
+#
+# Piped mode clones the repository (git required) into %USERPROFILE%\.asg-security-guardian\src and runs install.py.
+# Read this file before piping it to a shell — that is exactly the habit ASG asks you to keep.
+param(
+    [ValidateSet("auto", "claude", "codex", "all")][string]$Target = "auto",
+    [ValidateSet("pt", "en")][string]$Lang = "pt",
+    [switch]$AddToPath,
+    [switch]$NoHooks,
+    [switch]$Uninstall
+)
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-$PythonCmd = $null
-$PythonArgs = @()
-if (Get-Command py -ErrorAction SilentlyContinue) {
-    $PythonCmd = "py"; $PythonArgs = @("-3")
-} elseif (Get-Command python -ErrorAction SilentlyContinue) {
-    $PythonCmd = "python"
+$RepoUrl = if ($env:ASG_REPO) { $env:ASG_REPO } else { "https://github.com/carlos-dataengineer/asg-security-guardian.git" }
+$Ref = if ($env:ASG_REF) { $env:ASG_REF } else { "main" }
+$StateDir = if ($env:ASG_STATE) { $env:ASG_STATE } else { Join-Path $HOME ".asg-security-guardian" }
+$Src = Join-Path $StateDir "src"
+
+# Find Python 3.10+
+$Py = $null; $PyArgs = @()
+foreach ($cand in @(@("py", "-3"), @("python"), @("python3"))) {
+    if (Get-Command $cand[0] -ErrorAction SilentlyContinue) {
+        $extra = @(); if ($cand.Count -gt 1) { $extra = $cand[1..($cand.Count - 1)] }
+        & $cand[0] @extra -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
+        if ($LASTEXITCODE -eq 0) { $Py = $cand[0]; $PyArgs = $extra; break }
+    }
+}
+if (-not $Py) { throw "ASG: Python 3.10+ is required (https://www.python.org/downloads/)." }
+
+$InstallArgs = @("--target", $Target, "--lang", $Lang)
+if ($AddToPath) { $InstallArgs += "--add-to-path" }
+if ($NoHooks) { $InstallArgs += "--no-hooks" }
+if ($Uninstall) { $InstallArgs = @("--uninstall") }
+
+$Here = if ($PSScriptRoot) { $PSScriptRoot } else { $null }
+if ($Here -and (Test-Path (Join-Path $Here "install.py"))) {
+    & $Py @PyArgs (Join-Path $Here "install.py") @InstallArgs
+    exit $LASTEXITCODE
+}
+
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw "ASG: git is required for the one-command install (https://git-scm.com/download/win)." }
+if (Test-Path (Join-Path $Src ".git")) {
+    Write-Host "ASG: updating $Src ($Ref)"
+    git -C $Src fetch --depth 1 origin $Ref; if ($LASTEXITCODE -ne 0) { throw "git fetch failed" }
+    git -C $Src checkout -q FETCH_HEAD
 } else {
-    throw "Python 3.10+ não encontrado. Instale em https://www.python.org/downloads/."
+    Write-Host "ASG: downloading $RepoUrl ($Ref) -> $Src"
+    New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
+    git clone -q --depth 1 --branch $Ref $RepoUrl $Src; if ($LASTEXITCODE -ne 0) { throw "git clone failed" }
 }
-& $PythonCmd @PythonArgs --version
-if ($LASTEXITCODE -ne 0) { throw "Falha ao verificar Python." }
-& $PythonCmd @PythonArgs -c "import sys; raise SystemExit(0 if sys.version_info >= (3,10) else 1)"
-if ($LASTEXITCODE -ne 0) { throw "Python 3.10 ou superior é obrigatório." }
-
-$SkillSource = Join-Path $Root ".claude\skills\asg-security-guardian"
-if (-not (Test-Path $SkillSource)) { throw "Skill não encontrada: $SkillSource" }
-if ($Project) {
-    $SkillDestination = Join-Path (Get-Location) ".claude\skills\asg-security-guardian"
-} else {
-    $ClaudeHome = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $HOME ".claude" }
-    $SkillDestination = Join-Path $ClaudeHome "skills\asg-security-guardian"
-}
-$App = Join-Path $HOME ".asg\app"
-$Bin = Join-Path $HOME ".asg\bin"
-if (Test-Path $SkillDestination) { throw "Skill já existe: $SkillDestination. Faça backup/remova manualmente antes de reinstalar." }
-if (Test-Path $App) { throw "Aplicação já existe: $App. Faça backup/remova manualmente antes de reinstalar." }
-
-New-Item -ItemType Directory -Force -Path (Split-Path -Parent $SkillDestination), $App, $Bin | Out-Null
-Copy-Item -Recurse -LiteralPath $SkillSource -Destination $SkillDestination
-New-Item -ItemType Directory -Force -Path (Join-Path $App "protection_core") | Out-Null
-Copy-Item (Join-Path $Root "protection_core\*.py") (Join-Path $App "protection_core")
-Copy-Item -Recurse (Join-Path $Root "config") $App
-
-$Launcher = Join-Path $Bin "asg.ps1"
-$PythonExe = (Get-Command $PythonCmd).Source
-$PythonArgsText = ($PythonArgs | ForEach-Object { "'$_'" }) -join ","
-@"
-`$ErrorActionPreference = 'Stop'
-`$AsgRoot = '$($App.Replace("'","''"))'
-`$PythonExe = '$($PythonExe.Replace("'","''"))'
-`$PythonArgs = @($PythonArgsText)
-if (`$args.Count -lt 1) { Write-Host 'Uso: asg.ps1 <scan|baseline|check|watch|propose-quarantine|approve|verify-audit> [argumentos]'; exit 2 }
-`$Command = `$args[0]
-`$Rest = @()
-if (`$args.Count -gt 1) { `$Rest = `$args[1..(`$args.Count - 1)] }
-switch (`$Command) {
-  'scan' { & `$PythonExe @PythonArgs (Join-Path `$AsgRoot 'protection_core\asg_guard.py') @Rest }
-  {`$_ -in 'baseline','check','watch','propose-quarantine','approve','verify-audit'} { & `$PythonExe @PythonArgs (Join-Path `$AsgRoot 'protection_core\asg_local.py') `$Command @Rest }
-  default { Write-Error "Comando desconhecido: `$Command"; exit 2 }
-}
-exit `$LASTEXITCODE
-"@ | Set-Content -Encoding UTF8 $Launcher
-
-Write-Host "ASG instalado."
-Write-Host "Skill: $SkillDestination"
-Write-Host "Core:  $App"
-Write-Host "CLI:   $Launcher"
-Write-Host "Adicione $Bin ao PATH para chamar 'asg.ps1' de qualquer pasta."
+& $Py @PyArgs (Join-Path $Src "install.py") @InstallArgs

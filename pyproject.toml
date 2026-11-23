@@ -1,0 +1,25 @@
+[project]
+name = "asg-security-guardian"
+version = "0.3.0"
+description = "Local, read-only security triage for code that Claude Code and Codex download from GitHub."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["security", "claude-code", "codex", "agent-skills", "supply-chain", "hooks"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Security",
+]
+
+[project.urls]
+Homepage = "https://github.com/carlos-dataengineer/asg-security-guardian"
+Issues = "https://github.com/carlos-dataengineer/asg-security-guardian/issues"
+
+# Installation is done by install.py (it registers skills and hooks in Claude Code / Codex),
+# not by pip. This file holds project metadata and tool configuration.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

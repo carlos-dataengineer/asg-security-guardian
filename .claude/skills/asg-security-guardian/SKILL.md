@@ -17,12 +17,18 @@ The configured deployment is local-only. Do not upload source files, reports, sa
 
 Every action requires individual approval. This includes quarantine, blocking, deleting, modifying, installing, executing, changing firewall rules, terminating processes, disabling integrations, and credential revocation. Do not use standing consent.
 
-The current Protection Core 0.2 supports:
+The current Protection Core 0.3 (works in Claude Code and OpenAI Codex) supports:
 - Read-only static scan (`asg_guard.py`).
 - Local file-integrity baselines and polling checks (`asg_local.py`).
 - One-time approval proposals.
 - Copy-only quarantine, preserving the original.
 - Local hash-chained audit records.
+- Automatic agent hooks (`asg_hook.py`): every `git clone`, `gh repo clone` or GitHub download made
+  through the shell tool is scanned right after it finishes; direct installs from GitHub
+  (`pip install git+...`, `npm i github:...`, `curl ... | sh`) require an explicit user prompt in Claude Code
+  and are blocked with an explanation in Codex (Codex hooks cannot ask); new or changed plugins/skills
+  are scanned at session start.
+- A local dashboard of every scan: `asg dashboard --open` (file `~/.asg-security-guardian/dashboard.html`).
 
 Use the trusted installed core only. Default state is `~/.asg-security-guardian`. Do not put the state directory inside the untrusted project.
 
@@ -174,7 +180,7 @@ After an approved action:
 - Report failures honestly.
 - Do not claim remediation if it was not verified.
 
-## Claude Code operating guidance
+## Claude Code / Codex operating guidance
 
 - Use the ASG scanner from the trusted project installation path.
 - Do not invoke scripts located inside the untrusted target.
@@ -195,16 +201,35 @@ Investigate deeply. Preserve evidence. Minimize access. Explain uncertainty. Ask
 
 ## Local Protection Core commands
 
-Use only from the trusted ASG installation directory, never from a scanned repository.
+Use only the trusted installation in `~/.asg-security-guardian/` (created by the installer), never a copy
+inside a scanned repository. On Windows `~` is `%USERPROFILE%`. If `asg` is not on PATH, call the launcher
+directly: `~/.asg-security-guardian/bin/asg` (Linux/macOS) or `%USERPROFILE%\.asg-security-guardian\bin\asg.cmd` (Windows).
 
-- Static scan: `python protection_core/asg_guard.py TARGET --out ./asg-reports`
-- Create baseline: `python protection_core/asg_local.py baseline TARGET`
-- Check integrity: `python protection_core/asg_local.py check TARGET`
-- Watch changes: `python protection_core/asg_local.py watch TARGET --interval 10`
-- Propose quarantine copy: `python protection_core/asg_local.py propose-quarantine FILE`
-- Execute approved copy: `python protection_core/asg_local.py approve REQUEST_ID`
-- Verify audit ledger: `python protection_core/asg_local.py verify-audit`
+- Static scan (report + dashboard refresh): `asg scan TARGET`
+- Open the dashboard: `asg dashboard --open`
+- Installation and integrity check: `asg doctor`
+- Create baseline: `asg baseline TARGET`
+- Check integrity: `asg check TARGET`
+- Watch changes: `asg watch TARGET --interval 10`
+- Propose quarantine copy: `asg propose-quarantine FILE`
+- Execute approved copy (the user runs it in their own terminal): `asg approve REQUEST_ID`
+- Verify audit ledger: `asg verify-audit`
 
-For quarantine, the core requires an interactive terminal and the exact one-time phrase `APPROVE REQUEST_ID`. The original file remains in place. Never claim the copy was created unless the core reports success.
+For quarantine, the core requires an interactive terminal and the exact one-time phrase `APPROVE REQUEST_ID`.
+The agent cannot type that phrase for the user: ask the user to run the `approve` command themselves.
+The original file remains in place. Never claim the copy was created unless the core reports success.
+
+## When an automatic ASG hook message appears
+
+If a hook message starting with `ASG` appears after a clone or download:
+1. Stop the current plan before running anything from the downloaded content.
+2. Show the user the verdict line, the strong findings and the report path, in plain language.
+3. Explain that heuristic indicators are not proof of malware and that a clean result is not a guarantee.
+4. Ask the user explicitly whether to continue (install/run/open), and with which restrictions.
+5. If the message says INCONCLUSIVE, say so; never present it as a pass.
+
+If a command was blocked or a permission prompt mentions ASG, do not look for another way to run the same
+install. Offer the safe path instead: clone, let ASG scan, show the report, install from the local folder only
+after the user approves.
 
 If the CLI is unavailable, do not improvise destructive commands. Explain the limitation and leave the target unchanged.

@@ -1,17 +1,40 @@
-# Security Policy
+# Política de segurança / Security Policy
 
-## Project status
-ASG Security Guardian is an experimental defensive prototype. It is not an antivirus, EDR, malware-removal utility, or production endpoint security control.
+## Situação do projeto
 
-## Reporting a vulnerability
-Do not publish exploit details, credentials, private keys, personal data, or malware samples in a public issue. Until a private vulnerability-reporting channel is configured, contact the repository maintainer through the GitHub profile and request a private disclosure channel.
+O ASG Security Guardian é um **protótipo defensivo experimental**. Não é antivírus, EDR, removedor de malware
+nem controle de segurança de produção. Um relatório limpo não prova que um projeto é seguro.
 
-## Safe testing
-- Test only on systems and files you own or are explicitly authorized to assess.
-- Do not run untrusted code as part of testing.
-- Use synthetic fixtures and isolated disposable environments.
-- Preserve original evidence; current quarantine copies files and does not delete originals.
-- Treat heuristic findings as leads requiring human validation.
+ASG Security Guardian is an experimental defensive prototype, not an antivirus or EDR.
 
-## Scope limitations
-The current prototype does not provide kernel-level monitoring, process blocking, network enforcement, sandboxing, complete dependency analysis, or guaranteed malware detection. A clean scan is not proof that a project is safe.
+## Versões com suporte
+
+| Versão | Suporte |
+|---|---|
+| 0.3.x | ✅ correções de segurança |
+| < 0.3 | ❌ atualize com o instalador |
+
+## Como reportar uma vulnerabilidade
+
+Use o **relato privado de vulnerabilidades do GitHub**:
+<https://github.com/carlos-dataengineer/asg-security-guardian/security/advisories/new>
+
+Não abra issue pública com detalhes de exploração, credenciais, chaves privadas, dados pessoais ou amostras de
+malware. Inclua: versão (`asg version`), sistema operacional, agente (Claude Code/Codex), passos mínimos e impacto.
+Resposta inicial esperada em até 7 dias.
+
+Exemplos do que é relevante: um jeito de o conteúdo analisado executar código durante a análise; um caminho que
+faça o hook relatar "sem indicadores" quando a análise falhou; vazamento de segredo em relatório; um repositório
+capaz de alterar a política do ASG, os relatórios ou o ledger de auditoria; bypass do manifesto de integridade.
+
+## Testes seguros
+
+- Teste somente em sistemas e arquivos seus ou com autorização explícita.
+- Use fixtures sintéticas e ambientes descartáveis; não execute código não confiável.
+- Trate os achados heurísticos como pistas que exigem validação humana.
+
+## Limites de escopo
+
+O protótipo não oferece monitoramento de kernel, bloqueio de processos, controle de rede, sandbox, análise
+completa de dependências nem detecção garantida de malware. Os hooks são uma proteção para agentes de IA, não
+uma barreira contra um atacante determinado com acesso à máquina.

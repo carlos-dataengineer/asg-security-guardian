@@ -11,3 +11,5 @@ asg-reports/
 test-output/
 .DS_Store
 Thumbs.db
+*.asg-tmp
+*.asg-backup-*

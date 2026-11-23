@@ -16,7 +16,7 @@ import argparse, hashlib, json, os, shutil, sys, time, uuid
 from pathlib import Path
 from datetime import datetime, timezone
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 def now():
     return datetime.now(timezone.utc).isoformat()

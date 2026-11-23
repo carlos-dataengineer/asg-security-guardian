@@ -1,0 +1,45 @@
+name: Bug report / Relato de erro
+description: Something in ASG does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste secrets, tokens, private keys or real malware here.** Redact paths that contain personal data.
+        **Não cole segredos, tokens, chaves privadas ou malware real.** Para vulnerabilidades, use o SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: ASG version (`asg version`)
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Agent
+      options: [Claude Code, Codex, Both, Manual CLI only]
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, macOS, Linux, WSL]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce (command run by the agent, if any)
+      render: shell
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `asg doctor`
+      render: text

@@ -1,51 +1,87 @@
-# Installation guide
+# Guia de instalação
 
-The installer copies the Claude Code Skill and a self-contained copy of the local Protection Core into the user's home directory, then creates a command wrapper. It does not register a background service, install kernel drivers, alter firewall settings, or enable automatic remediation.
+## Requisitos
 
-## Windows
+- Python **3.10+** (`python --version`)
+- **git** (só para a instalação em um comando)
+- Claude Code e/ou OpenAI Codex instalados (o instalador detecta os dois)
 
-Open PowerShell in the extracted repository folder:
+## Opção 1 — um comando
 
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\\install.ps1
-```
-
-Project-local Skill installation:
+**Windows (PowerShell):**
 
 ```powershell
-.\\install.ps1 -Project
+irm https://raw.githubusercontent.com/carlos-dataengineer/asg-security-guardian/main/install.ps1 | iex
 ```
 
-## Linux and macOS
+**macOS / Linux / WSL / Git Bash:**
 
 ```bash
-chmod +x ./install.sh
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/carlos-dataengineer/asg-security-guardian/main/install.sh | sh
 ```
 
-Project-local Skill installation:
+O script clona o repositório em `~/.asg-security-guardian/src` e executa `install.py`. Rode esses comandos **você
+mesmo, no seu terminal**: se pedir para o Claude Code ou o Codex rodá-los depois do ASG instalado, o próprio ASG vai
+pedir confirmação (Claude) ou bloquear (Codex), porque é exatamente o padrão "baixar e executar sem analisar".
+
+## Opção 2 — revisar antes de instalar (recomendado para quem é cuidadoso)
 
 ```bash
-./install.sh --project
+git clone https://github.com/carlos-dataengineer/asg-security-guardian.git
+cd asg-security-guardian
+# leia install.py e protection_core/ antes de continuar
+python install.py
 ```
 
-The local core is copied to `~/.asg/app` (or `%USERPROFILE%\\.asg\\app` on Windows). The command wrapper is placed in `~/.asg/bin` (or `%USERPROFILE%\\.asg\\bin`). Add the bin directory to your PATH manually if desired.
+## Opções do instalador
 
-## Verify
+| `install.py` | `install.ps1` | Efeito |
+|---|---|---|
+| `--target auto` (padrão) | `-Target auto` | instala para os agentes encontrados (`~/.claude`, `~/.codex` ou comandos no PATH) |
+| `--target claude` / `codex` / `all` | `-Target claude` … | escolhe os agentes |
+| `--lang en` | `-Lang en` | mensagens em inglês (padrão: português) |
+| `--add-to-path` | `-AddToPath` | coloca `~/.asg-security-guardian/bin` no PATH do usuário |
+| `--no-hooks` | `-NoHooks` | só Skill, comando e painel, sem hooks automáticos |
+| `--uninstall` | `-Uninstall` | remove tudo, exceto relatórios e auditoria |
+
+Com `install.sh`, passe as opções de `install.py` depois de `sh -s --`, por exemplo:
+`curl -fsSL …/install.sh | sh -s -- --target codex --lang en`.
+
+Variáveis de ambiente: `ASG_STATE` (pasta de estado), `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `ASG_REF` (branch/tag
+usado pelo instalador de um comando), `ASG_HOOK_MAX_FILES`.
+
+## O que é criado
+
+| Local | Conteúdo |
+|---|---|
+| `~/.asg-security-guardian/app/` | Core instalado + `manifest.json` (SHA-256 de cada arquivo) |
+| `~/.asg-security-guardian/bin/` | comando `asg` (`asg.cmd` no Windows) |
+| `~/.asg-security-guardian/reports/` | relatórios JSON e Markdown |
+| `~/.asg-security-guardian/dashboard.html` | painel local |
+| `~/.asg-security-guardian/audit.jsonl` | ledger de auditoria com cadeia de hashes |
+| `~/.claude/skills/asg-security-guardian/` | Skill do Claude Code |
+| `~/.claude/settings.json` | hooks `PreToolUse`, `PostToolUse`, `SessionStart` (backup `.asg-backup-*` ao lado) |
+| `~/.agents/skills/asg-security-guardian/` | Skill do Codex |
+| `~/.codex/hooks.json` | hooks do Codex (backup `.asg-backup-*` ao lado) |
+
+Hooks que você já tinha são preservados. Reinstalar é seguro: as entradas do ASG são substituídas, não duplicadas.
+
+## Depois de instalar
+
+- **Claude Code:** reinicie (ou abra uma nova sessão).
+- **Codex:** reinicie e rode **`/hooks`** uma vez para **confiar** nos hooks do ASG. O Codex ignora hooks novos até
+  que sejam aprovados.
+- Confira com `asg doctor`.
+
+## Atualizar
+
+Rode o mesmo comando de instalação de novo (ou `git pull && python install.py` no clone).
+
+## Desinstalar
 
 ```bash
-python3 ~/.asg/app/protection_core/asg_guard.py --help
-python3 ~/.asg/app/protection_core/asg_local.py --help
+asg uninstall          # ou: python install.py --uninstall
 ```
 
-Windows:
-
-```powershell
-py -3 "$HOME\\.asg\\app\\protection_core\\asg_guard.py" --help
-py -3 "$HOME\\.asg\\app\\protection_core\\asg_local.py" --help
-```
-
-## Uninstall
-
-Remove the installed Skill directory, `~/.asg/app`, and the `~/.asg/bin/asg` launcher (or corresponding `%USERPROFILE%` paths on Windows). The `~/.asg-security-guardian` state/audit directory is intentionally left untouched. Review and back up local state before manually deleting it.
+Remove hooks, Skills, Core e comando. Relatórios, painel e auditoria ficam em `~/.asg-security-guardian/` para
+consulta; apague a pasta manualmente se quiser.
