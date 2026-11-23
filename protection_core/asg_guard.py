@@ -9,7 +9,7 @@ import argparse, hashlib, json, os, re, sys, time, zipfile, tarfile
 from pathlib import Path
 from datetime import datetime, timezone
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 MAX_FILES_DEFAULT = 50000
 MAX_FILE = 2 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 5000

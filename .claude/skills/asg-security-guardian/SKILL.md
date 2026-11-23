@@ -28,7 +28,7 @@ The current Protection Core 0.3 (works in Claude Code and OpenAI Codex) supports
   (`pip install git+...`, `npm i github:...`, `curl ... | sh`) require an explicit user prompt in Claude Code
   and are blocked with an explanation in Codex (Codex hooks cannot ask); new or changed plugins/skills
   are scanned at session start.
-- A local dashboard of every scan: `asg dashboard --open` (file `~/.asg-security-guardian/dashboard.html`).
+- A local dashboard of every scan and every action (blocked/confirmed installs, quarantine, integrity): `asg dashboard --open` / `asg dashboard --actions` (file `~/.asg-security-guardian/dashboard.html`).
 
 Use the trusted installed core only. Default state is `~/.asg-security-guardian`. Do not put the state directory inside the untrusted project.
 
@@ -207,6 +207,7 @@ directly: `~/.asg-security-guardian/bin/asg` (Linux/macOS) or `%USERPROFILE%\.as
 
 - Static scan (report + dashboard refresh): `asg scan TARGET`
 - Open the dashboard: `asg dashboard --open`
+- Actions timeline (blocks, confirmations, scans, quarantine, integrity) and audit-chain status: `asg log` or `asg dashboard --actions`
 - Installation and integrity check: `asg doctor`
 - Create baseline: `asg baseline TARGET`
 - Check integrity: `asg check TARGET`

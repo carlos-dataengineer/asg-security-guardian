@@ -56,7 +56,7 @@ O ASG entra **entre o download e o uso**: assim que o agente baixa algo do GitHu
 estática (sem executar nada), o veredito aparece para você e o agente recebe instruções para **parar e perguntar**
 quando houver indicadores fortes.
 
-> **Status: protótipo defensivo 0.3.** O ASG faz triagem heurística. Não é antivírus nem EDR. Um achado não prova
+> **Status: protótipo defensivo 0.4.** O ASG faz triagem heurística. Não é antivírus nem EDR. Um achado não prova
 > malware, e um resultado limpo não garante segurança. Leia as [limitações](#%EF%B8%8F-limitações).
 
 ## 🚀 Instalação em um comando
@@ -102,7 +102,7 @@ Um único comando deixa a ferramenta pronta dentro do seu agente, sem nenhuma co
 | **Hook antes de instalar** (`PreToolUse`) | instalação direta do GitHub → **pede confirmação** | instalação direta do GitHub → **bloqueia e explica** |
 | **Hook ao abrir sessão** (`SessionStart`) | analisa plugins/skills novos ou alterados | analisa skills novas ou alteradas |
 | **Comando `asg`** | `~/.asg-security-guardian/bin/` | idem |
-| **Painel local** `dashboard.html` | todas as análises, com filtros | idem |
+| **Painel local** `dashboard.html` | aba **Análises** + aba **Ações** (bloqueios, confirmações, quarentena, integridade) | idem |
 | **Primeira análise** | das extensões que você já tem | idem |
 
 Seus hooks e configurações existentes são preservados, e um backup é criado antes de qualquer alteração.
@@ -163,6 +163,29 @@ autorizado e registra evidências.
 
 <img src="docs/images/dashboard.png" alt="Painel do ASG com três análises" width="880">
 
+**Painel de ações: o que foi bloqueado, confirmado e colocado em quarentena (`asg dashboard --actions`)**
+
+Cada decisão do ASG fica num registro de auditoria local encadeado por hashes. A aba **Ações** mostra a linha do
+tempo, os totais e se o registro continua íntegro:
+
+| Evento | Quando aparece |
+|---|---|
+| 🟥 **Instalação bloqueada** | o Codex tentou instalar/executar algo direto do GitHub e o ASG negou |
+| 🟧 **Confirmação solicitada** | o Claude Code tentou o mesmo e o ASG pediu sua confirmação |
+| 🟨 **Instalação executada após confirmação** | você aprovou e o comando rodou |
+| 🔎 **Análise automática / manual** | cada clone, download ou `asg scan`, com o veredito |
+| 🧪 **Quarentena proposta / executada / negada** | o fluxo de aprovação da cópia para quarentena |
+| 🧷 **Baseline / verificação de integridade** | fotos de hashes e alterações detectadas |
+
+<img src="docs/images/dashboard-actions.png" alt="Aba Ações do painel do ASG" width="880">
+
+A mesma linha do tempo no terminal, com `asg log`:
+
+<img src="docs/images/log.png" alt="asg log" width="880">
+
+Comandos com credenciais (`https://usuario:token@…`, `TOKEN=…`, cabeçalhos `Authorization`) são gravados já
+**redigidos**. O painel avisa em destaque se o registro de auditoria tiver sido alterado.
+
 <sub>As telas usam repositórios de demonstração sintéticos (`example/...`). O texto do ASG é a saída real da
 ferramenta; as respostas dos agentes são ilustrativas.</sub>
 
@@ -196,6 +219,10 @@ ações uma de cada vez.
 `asg baseline` + `asg check` mostram arquivos adicionados, alterados e removidos, útil depois de atualizar uma
 dependência ou um plugin.
 
+**8. Auditar o que o agente tentou fazer.**
+No fim do dia, `asg dashboard --actions` (ou `asg log`) mostra quais instalações foram bloqueadas, quais você
+aprovou, quais repositórios foram marcados para revisão e se o registro de auditoria continua íntegro.
+
 ## ⌨️ Atalhos e comandos
 
 **Dentro do agente**
@@ -212,7 +239,9 @@ dependência ou um plugin.
 | Comando | O que faz |
 |---|---|
 | `asg scan CAMINHO` | análise estática (relatório JSON + Markdown e painel atualizado) |
-| `asg dashboard --open` | abre o painel com todas as análises |
+| `asg dashboard --open` | abre o painel (aba Análises) |
+| `asg dashboard --actions` | abre o painel direto na aba Ações |
+| `asg log [--limit N] [--type TIPO]` | linha do tempo de bloqueios, confirmações, análises e quarentena no terminal |
 | `asg doctor` | verifica instalação, integridade, Skills e hooks |
 | `asg baseline CAMINHO` / `asg check CAMINHO` | foto dos hashes / comparação com a foto |
 | `asg watch CAMINHO --interval 10` | acompanha mudanças por polling (só detecta) |
@@ -317,6 +346,14 @@ regras. Abra o relatório, veja o contexto de cada achado e decida. Se for um fa
 [issue de falso positivo](https://github.com/carlos-dataengineer/asg-security-guardian/issues/new/choose).
 </details>
 
+<details><summary><b>Onde vejo o que o ASG bloqueou?</b></summary>
+
+Na aba **Ações** do painel (`asg dashboard --actions`) ou no terminal com `asg log`. Os eventos ficam em
+`~/.asg-security-guardian/audit.jsonl`, encadeados por hashes. Se alguém editar o arquivo, o painel mostra
+**AUDITORIA ALTERADA**. Ressalva: um administrador local ainda consegue reescrever o arquivo inteiro e
+recalcular a cadeia; não é armazenamento imutável.
+</details>
+
 <details><summary><b>Funciona sem o Claude Code ou o Codex?</b></summary>
 
 Sim: `asg scan`, `asg dashboard` e os comandos de baseline/quarentena funcionam sozinhos no terminal.
@@ -347,7 +384,7 @@ protection_core/
   asg_guard.py       scanner estático e relatórios
   asg_hook.py        hooks PreToolUse / PostToolUse / SessionStart
   asg_local.py       baseline, quarentena por cópia, auditoria
-  asg_dashboard.py   painel HTML local
+  asg_dashboard.py   painel HTML local (Análises + Ações)
   asg_cli.py         comando `asg`
 install.py           instalador (Claude Code + Codex)
 install.ps1 / .sh    instalação em um comando

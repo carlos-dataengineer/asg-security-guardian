@@ -11,8 +11,8 @@ ASG Security Guardian is an experimental defensive prototype, not an antivirus o
 
 | Versão | Suporte |
 |---|---|
-| 0.3.x | ✅ correções de segurança |
-| < 0.3 | ❌ atualize com o instalador |
+| 0.4.x | ✅ correções de segurança |
+| < 0.4 | ❌ atualize com o instalador |
 
 ## Como reportar uma vulnerabilidade
 

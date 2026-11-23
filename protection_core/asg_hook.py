@@ -313,9 +313,21 @@ def detect_direct_install(command: str) -> str | None:
 # --------------------------------------------------------------------------- scanning
 def _tilde(text: str) -> str:
     """Show the home folder as ~ so user names do not leak into transcripts or screenshots."""
-    home = str(Path.home())
-    for variant in (home, home.replace("\\", "/")):
-        text = text.replace(variant, "~")
+    home = Path.home()
+    variants = set()
+    forms = [str(home), str(home.resolve())]
+    if os.name == "nt":
+        try:
+            import ctypes
+            buf = ctypes.create_unicode_buffer(1024)
+            if ctypes.windll.kernel32.GetShortPathNameW(str(home), buf, 1024):
+                forms.append(buf.value)
+        except Exception:
+            pass
+    for h in forms:
+        variants.update({h, h.replace("\\", "/")})
+    for v in sorted(variants, key=len, reverse=True):
+        text = re.sub(re.escape(v), "~", text, flags=re.IGNORECASE)
     return text
 
 
@@ -353,15 +365,48 @@ def scan_target(path: Path, label: str, source: str) -> tuple[str, bool]:
     report["source"] = source
     report["trigger"] = "agent-hook"
     json_path, md_path = guard.write_reports(report, state / "reports")
+    dashboard = _load("asg_dashboard")
     local.append_audit(state, {
-        "type": "auto_scan", "target": str(path), "source": source, "scan_id": report["scan_id"],
-        "counts": report.get("counts", {}), "report": str(json_path), "client": CLIENT,
+        "type": "auto_scan", "target": str(path), "source": redact_command(source), "scan_id": report["scan_id"],
+        "counts": report.get("counts", {}), "verdict": dashboard.verdict(report),
+        "report": str(json_path), "client": CLIENT,
     })
     try:
-        _load("asg_dashboard").build(state)
+        dashboard.build(state)
     except Exception:
         pass  # the dashboard is a convenience; the scan result stands on its own
     return summarize(report, label, md_path)
+
+
+SECRET_IN_COMMAND = [
+    (re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^/\s:@]+(?::[^/\s@]*)?@"), r"\1[REDACTED]@"),
+    (re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{20,})\b"), "[REDACTED]"),
+    (re.compile(r"(?i)\b((?:api[_-]?key|access[_-]?token|token|secret|password|passwd|pwd)\s*[=:]\s*)\S+"), r"\1[REDACTED]"),
+    (re.compile(r"(?i)(-H\s+['\"]?(?:authorization|x-api-key|private-token):\s*)[^'\"]+"), r"\1[REDACTED]"),
+]
+
+
+def redact_command(command: str, limit: int = 400) -> str:
+    """Remove credentials from a command line before it is written to the audit ledger."""
+    text = str(command)
+    for rx, repl in SECRET_IN_COMMAND:
+        text = rx.sub(repl, text)
+    text = _tilde(text)
+    return text if len(text) <= limit else text[: limit - 3] + "..."
+
+
+def log_gate(kind: str, what: str, command: str, cwd: str, decision: str | None = None) -> None:
+    """Record an install gate decision (or an install that ran after confirmation). Never raises."""
+    try:
+        local = _load("asg_local")
+        state = local.ensure_local_state(STATE)
+        event = {"type": kind, "client": CLIENT, "what": what, "command": redact_command(command), "cwd": _tilde(cwd or "")}
+        if decision:
+            event["decision"] = decision
+        local.append_audit(state, event)
+        _load("asg_dashboard").build(state)
+    except Exception:
+        pass
 
 
 def _recent(path: Path, seconds: int = 900) -> list[Path]:
@@ -455,6 +500,7 @@ def handle_pre(data: dict) -> None:
             decision, reason = "deny", t("deny_install_codex", what=what)
         else:
             decision, reason = "ask", t("ask_install", what=what)
+        log_gate("install_gate", what, command, data.get("cwd", ""), decision)
         emit({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": decision,
@@ -466,6 +512,9 @@ def handle_post(data: dict) -> None:
     command = _command(data)
     if not command or not PREFILTER.search(command):
         return
+    what = detect_direct_install(command)
+    if what:
+        log_gate("install_ran", what, command, data.get("cwd", ""))
     targets = parse_download_targets(command, data.get("cwd", ""))
     if not targets:
         return

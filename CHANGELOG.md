@@ -2,6 +2,31 @@
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa [SemVer](https://semver.org/lang/pt-BR/).
 
+## 0.4.0 — painel de ações e bloqueios
+
+### Adicionado
+- **Aba "Ações" no painel** (`asg dashboard --actions`): linha do tempo do registro de auditoria. Mostra:
+  - instalações bloqueadas (Codex), confirmações pedidas (Claude Code) e instalações executadas após confirmação;
+  - análises automáticas e manuais, com veredito;
+  - propostas, cópias e negações de quarentena;
+  - baselines e alterações de integridade.
+  - Também traz totais, filtros, busca e o selo **Auditoria íntegra / AUDITORIA ALTERADA**.
+- **`asg log`**: a mesma linha do tempo no terminal (`--limit N`, `--type TIPO`).
+- O hook registra no ledger cada decisão de `PreToolUse` (`install_gate`) e cada instalação direta que chegou a
+  rodar após a confirmação (`install_ran`).
+- `asg scan` registra `manual_scan` no ledger; as análises automáticas passam a guardar o veredito.
+
+### Corrigido
+- **Condição de corrida no ledger:** dois hooks rodando ao mesmo tempo (por exemplo, duas sessões abrindo) liam o
+  mesmo último hash e bifurcavam a cadeia. A verificação acusava "alterada" sem ter havido alteração. Agora a
+  gravação usa um lock entre processos. Bifurcações antigas desse tipo são reconhecidas e contadas como
+  "gravações simultâneas, sem perda". Eventos editados, removidos ou fora de ordem continuam reprovando.
+
+### Segurança
+- Comandos gravados no ledger são redigidos: credenciais em URL (`https://usuario:token@`), tokens do GitHub, da
+  AWS e de APIs, atribuições `TOKEN=`/`password=` e cabeçalhos `Authorization`.
+- A conversão da pasta pessoal para `~` agora reconhece as formas curta e longa dos caminhos do Windows.
+
 ## 0.3.0 — proteção automática para Claude Code e Codex
 
 ### Adicionado

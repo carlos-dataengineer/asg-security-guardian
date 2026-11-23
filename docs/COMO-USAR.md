@@ -30,6 +30,8 @@ asg check ~/projetos/meu-app                   # compara com a foto
 asg propose-quarantine ~/Downloads/arquivo.js  # propõe cópia para quarentena (nada muda ainda)
 asg approve <REQUEST_ID>                       # você digita APPROVE <REQUEST_ID> para confirmar
 asg verify-audit                               # confere a cadeia de hashes da auditoria
+asg log                                        # o que foi bloqueado, confirmado, analisado e isolado
+asg dashboard --actions                        # a mesma linha do tempo no painel
 ```
 
 ## Pedindo ao agente

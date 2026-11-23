@@ -3,7 +3,8 @@
 `asg` — single entry point for ASG Security Guardian.
 
     asg scan PATH [--out DIR] [--max-files N]   read-only static scan (report + dashboard refresh)
-    asg dashboard [--open]                      build / open the local dashboard
+    asg dashboard [--open | --actions]          build / open the local dashboard (Scans and Actions tabs)
+    asg log [--limit N] [--type TYPE]           recent actions: blocks, confirmations, scans, quarantine
     asg baseline PATH | check PATH | watch PATH [--interval S]
     asg propose-quarantine FILE | approve REQUEST_ID | verify-audit
     asg doctor                                  installation and integrity check
@@ -17,6 +18,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -40,12 +42,68 @@ def cmd_scan(args: list[str]) -> int:
         return _run("asg_guard.py", ["--help"])
     if "--out" not in args:
         args = args + ["--out", str(STATE / "reports")]
+    started = time.time()
     rc = _run("asg_guard.py", args)
+    out_dir = Path(args[args.index("--out") + 1]).expanduser()
+    try:
+        newest = max(out_dir.glob("asg-*.json"), key=lambda p: p.stat().st_mtime)
+        if newest.stat().st_mtime >= started - 1:
+            report = json.loads(newest.read_text(encoding="utf-8"))
+            local, dash = _load("asg_local"), _load("asg_dashboard")
+            local.append_audit(local.ensure_local_state(STATE), {
+                "type": "manual_scan", "target": report.get("target", ""), "source": "asg scan",
+                "scan_id": report.get("scan_id"), "counts": report.get("counts", {}),
+                "verdict": dash.verdict(report), "report": str(newest), "client": "cli"})
+    except (ValueError, OSError, json.JSONDecodeError):
+        pass
     try:
         print(f"Dashboard: {_load('asg_dashboard').build(STATE)}")
     except Exception as e:  # pragma: no cover
         print(f"(dashboard not updated: {type(e).__name__})")
     return rc
+
+
+LOG_LABELS = {
+    "install_gate": "INSTALL", "install_ran": "RAN", "auto_scan": "SCAN", "manual_scan": "SCAN",
+    "baseline_created": "BASELINE", "integrity_check": "CHECK", "action_proposed": "PROPOSE",
+    "action_executed": "QUARANTINE", "approval_denied_or_cancelled": "DENIED", "approval_expired": "EXPIRED",
+    "approval_rejected_stale_target": "STALE",
+}
+
+
+def cmd_log(args: list[str]) -> int:
+    limit, kind = 20, None
+    if "--limit" in args:
+        limit = int(args[args.index("--limit") + 1])
+    if "--type" in args:
+        kind = args[args.index("--type") + 1]
+    dash = _load("asg_dashboard")
+    events = [e for e in dash.load_events(STATE) if not kind or e.get("type") == kind][:limit]
+    if not events:
+        print("No actions recorded yet.")
+        return 0
+    for ev in events:
+        t = ev.get("type", "")
+        when = str(ev.get("timestamp", ""))[:19].replace("T", " ")
+        label = LOG_LABELS.get(t, t.upper())
+        if t == "install_gate":
+            label = "BLOCKED" if ev.get("decision") == "deny" else "ASKED"
+            detail = f"{ev.get('what', '')}: {ev.get('command', '')}"
+        elif t == "install_ran":
+            detail = f"{ev.get('what', '')}: {ev.get('command', '')}"
+        elif t in ("auto_scan", "manual_scan"):
+            detail = f"{str(ev.get('verdict', '')).upper():12} {dash._tilde(str(ev.get('target', '')))}"
+        elif t in ("baseline_created", "integrity_check"):
+            detail = f"{dash._tilde(str(ev.get('root', '')))}" + (f"  ({ev.get('changes')} changes)" if t == "integrity_check" else "")
+        else:
+            detail = str(ev.get("request_id", ""))
+        client = f"[{ev['client']}]" if ev.get("client") else ""
+        print(f"{when}  {label:10} {client:9} {detail}")
+    chain = dash.chain_status(STATE)
+    if chain is not None:
+        forks = f", {chain['forks']} simultaneous write(s), nothing lost" if chain.get("valid") and chain.get("forks") else ""
+        print(f"\naudit chain: {'OK' if chain.get('valid') else 'ALTERED'} ({chain.get('events', 0)} events{forks})")
+    return 0
 
 
 def cmd_doctor() -> int:
@@ -91,6 +149,8 @@ def main(argv: list[str]) -> int:
         return cmd_scan(rest)
     if cmd == "dashboard":
         return _run("asg_dashboard.py", rest)
+    if cmd == "log":
+        return cmd_log(rest)
     if cmd in LOCAL_CMDS:
         return _run("asg_local.py", [cmd] + rest)
     if cmd == "doctor":

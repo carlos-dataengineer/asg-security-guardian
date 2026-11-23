@@ -16,7 +16,7 @@ import argparse, hashlib, json, os, shutil, sys, time, uuid
 from pathlib import Path
 from datetime import datetime, timezone
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 def now():
     return datetime.now(timezone.utc).isoformat()
@@ -34,45 +34,92 @@ def ensure_local_state(state: Path):
         (state/name).mkdir(exist_ok=True)
     return state
 
+class _LedgerLock:
+    """Cross-process lock (lock file created with O_EXCL) so concurrent hooks never fork the chain."""
+
+    def __init__(self, state: Path, timeout: float = 10.0, stale: float = 30.0):
+        self.path, self.timeout, self.stale = state / "audit.lock", timeout, stale
+
+    def __enter__(self):
+        deadline = time.time() + self.timeout
+        while True:
+            try:
+                fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.write(fd, str(os.getpid()).encode())
+                os.close(fd)
+                return self
+            except FileExistsError:
+                try:
+                    if time.time() - self.path.stat().st_mtime > self.stale:
+                        self.path.unlink()  # left behind by a crashed process
+                        continue
+                except OSError:
+                    pass
+                if time.time() > deadline:
+                    raise TimeoutError("ASG audit ledger is locked by another process.")
+                time.sleep(0.05)
+
+    def __exit__(self, *exc):
+        try:
+            self.path.unlink()
+        except OSError:
+            pass
+
+
 def append_audit(state: Path, event: dict):
     """Append a tamper-evident hash-chained event. This is tamper-evident, not WORM storage."""
     log = state / "audit.jsonl"
-    previous = "GENESIS"
-    if log.exists():
-        try:
-            last = log.read_text(encoding="utf-8").splitlines()[-1]
-            previous = json.loads(last).get("event_hash", "GENESIS")
-        except Exception:
-            previous = "CHAIN_READ_ERROR"
-    payload = dict(event)
-    payload["timestamp"] = payload.get("timestamp", now())
-    payload["previous_hash"] = previous
-    canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-    payload["event_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-    with log.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    with _LedgerLock(state):
+        previous = "GENESIS"
+        if log.exists():
+            try:
+                last = log.read_text(encoding="utf-8").splitlines()[-1]
+                previous = json.loads(last).get("event_hash", "GENESIS")
+            except Exception:
+                previous = "CHAIN_READ_ERROR"
+        payload = dict(event)
+        payload["timestamp"] = payload.get("timestamp", now())
+        payload["previous_hash"] = previous
+        canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        payload["event_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        with log.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
     return payload["event_hash"]
 
 def verify_audit(state: Path):
+    """Verify the hash chain.
+
+    A "concurrent fork" — an event whose previous_hash equals the previous_hash of the event right
+    before it (two writers read the same tail at the same time, before ledger locking existed) — is
+    reported separately and does not invalidate the chain: both events still carry valid hashes and
+    nothing was removed. Edited, deleted or reordered events still fail verification.
+    """
     log = state / "audit.jsonl"
     if not log.exists():
-        return {"valid": True, "events": 0, "message": "No audit events yet."}
-    previous = "GENESIS"
-    count = 0
+        return {"valid": True, "events": 0, "forks": 0, "message": "No audit events yet."}
+    previous, sibling_of = "GENESIS", None
+    count = forks = 0
     for raw in log.read_text(encoding="utf-8").splitlines():
         if not raw.strip():
             continue
         item = json.loads(raw)
         claimed = item.pop("event_hash", None)
-        if item.get("previous_hash") != previous:
-            return {"valid": False, "events": count, "message": "Previous-hash mismatch."}
+        prev = item.get("previous_hash")
+        if prev != previous:
+            if prev is not None and prev == sibling_of:
+                forks += 1
+            else:
+                return {"valid": False, "events": count, "forks": forks, "message": "Previous-hash mismatch."}
         canonical = json.dumps(item, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
         actual = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
         if actual != claimed:
-            return {"valid": False, "events": count, "message": "Event hash mismatch."}
-        previous = claimed
+            return {"valid": False, "events": count, "forks": forks, "message": "Event hash mismatch."}
+        sibling_of, previous = prev, claimed
         count += 1
-    return {"valid": True, "events": count, "message": "Hash chain verified. Local file permissions still matter."}
+    msg = "Hash chain verified. Local file permissions still matter."
+    if forks:
+        msg += f" {forks} concurrent-write fork(s) from simultaneous hooks (no event removed or edited)."
+    return {"valid": True, "events": count, "forks": forks, "message": msg}
 
 def inventory(root: Path):
     root = root.resolve(strict=True)

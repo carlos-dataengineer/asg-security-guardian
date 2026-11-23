@@ -23,7 +23,7 @@ ASG sits **between download and use**. As soon as the agent fetches something fr
 scan (it never executes anything) and shows you the verdict. When it finds strong indicators, it tells the agent
 to **stop and ask you** first.
 
-> **Status: defensive prototype 0.3.** Heuristic triage, not an antivirus or EDR. A finding is not proof of
+> **Status: defensive prototype 0.4.** Heuristic triage, not an antivirus or EDR. A finding is not proof of
 > malware, and a clean result is not a guarantee.
 
 ## Install in one command
@@ -75,6 +75,18 @@ Verdicts: **REVIEW** (strong indicators), **INCONCLUSIVE** (scan incomplete or c
 
 <img src="docs/images/dashboard.png" alt="ASG dashboard" width="880">
 
+**Actions tab** (`asg dashboard --actions`, or `asg log` in the terminal). Every ASG decision is written to a local
+hash-chained audit ledger, and this tab shows it as a timeline:
+- installs blocked (Codex);
+- confirmations asked (Claude Code) and installs that ran after you approved;
+- automatic and manual scans with their verdicts;
+- quarantine proposals and copies;
+- baselines and integrity changes.
+
+It also shows whether the ledger is still intact. Commands containing credentials are stored redacted.
+
+<img src="docs/images/dashboard-actions.png" alt="ASG dashboard, Actions tab" width="880">
+
 <sub>Synthetic demo repositories. ASG text is real tool output; agent replies are illustrative.</sub>
 
 ## Shortcuts and commands
@@ -83,7 +95,8 @@ Verdicts: **REVIEW** (strong indicators), **INCONCLUSIVE** (scan incomplete or c
 |---|---|
 | `/asg-security-guardian …` (Claude) · `$asg-security-guardian …` (Codex) | guided investigation |
 | `asg scan PATH` | static scan, report and dashboard refresh |
-| `asg dashboard --open` | open the dashboard |
+| `asg dashboard --open` / `--actions` | open the dashboard (Scans / Actions tab) |
+| `asg log [--limit N]` | timeline of blocks, confirmations, scans and quarantine |
 | `asg doctor` | installation and integrity check |
 | `asg baseline PATH` / `asg check PATH` / `asg watch PATH` | file-integrity snapshot, compare and watch |
 | `asg propose-quarantine FILE` → `asg approve ID` | copy-only quarantine (you type `APPROVE ID`) |
