@@ -2,6 +2,25 @@
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa [SemVer](https://semver.org/lang/pt-BR/).
 
+## 0.5.0 — ASG Security Center
+
+### Adicionado
+- **ASG Security Center**: o `dashboard.html` virou uma central de proteção no estilo dos consoles de antivírus,
+  com menu lateral e seis telas:
+  - **Visão geral:** escudo de status (protegido, atenção necessária ou proteção incompleta), totais, gráfico de
+    atividade dos últimos 14 dias, rosca de severidade, regras mais acionadas, escudos ativos e ameaças recentes;
+  - **Análises**, **Ameaças** (todos os HIGH/CRITICAL), **Atividade** e **Quarentena** (propostas e cópias);
+  - **Proteção:** cada escudo por agente (Claude Code/Codex), integridade do Core, auditoria e caminhos.
+- Detecção automática dos escudos ativos, lendo `~/.claude/settings.json` e `~/.codex/hooks.json`, e verificação do
+  manifesto SHA-256 do Core.
+- Tema claro/escuro com botão (preferência salva no navegador), botão **Atualizar**, **Analisar agora** com comando
+  para copiar, layout para celular e suporte a `prefers-reduced-motion`.
+- `asg dashboard --view NOME` abre direto em qualquer tela.
+
+### Segurança
+- O painel continua 100% local: CSP bloqueia qualquer acesso externo e todo texto vindo de repositórios ou comandos
+  é escapado no servidor. Gráficos em SVG gerados localmente, sem bibliotecas.
+
 ## 0.4.0 — painel de ações e bloqueios
 
 ### Adicionado

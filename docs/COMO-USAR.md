@@ -24,7 +24,7 @@ flowchart TD
 
 ```bash
 asg scan ~/Downloads/projeto-desconhecido      # análise estática + painel atualizado
-asg dashboard --open                           # abre o painel
+asg dashboard --open                           # ASG Security Center: status, escudos, ameaças, atividade
 asg baseline ~/projetos/meu-app                # tira uma "foto" dos hashes
 asg check ~/projetos/meu-app                   # compara com a foto
 asg propose-quarantine ~/Downloads/arquivo.js  # propõe cópia para quarentena (nada muda ainda)

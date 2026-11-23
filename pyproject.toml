@@ -1,6 +1,6 @@
 [project]
 name = "asg-security-guardian"
-version = "0.4.0"
+version = "0.5.0"
 description = "Local, read-only security triage for code that Claude Code and Codex download from GitHub."
 readme = "README.md"
 license = { text = "MIT" }

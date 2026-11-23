@@ -3,7 +3,7 @@
 `asg` — single entry point for ASG Security Guardian.
 
     asg scan PATH [--out DIR] [--max-files N]   read-only static scan (report + dashboard refresh)
-    asg dashboard [--open | --actions]          build / open the local dashboard (Scans and Actions tabs)
+    asg dashboard [--open | --actions | --view NAME]   build / open the ASG Security Center
     asg log [--limit N] [--type TYPE]           recent actions: blocks, confirmations, scans, quarantine
     asg baseline PATH | check PATH | watch PATH [--interval S]
     asg propose-quarantine FILE | approve REQUEST_ID | verify-audit

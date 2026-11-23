@@ -56,7 +56,7 @@ O ASG entra **entre o download e o uso**: assim que o agente baixa algo do GitHu
 estática (sem executar nada), o veredito aparece para você e o agente recebe instruções para **parar e perguntar**
 quando houver indicadores fortes.
 
-> **Status: protótipo defensivo 0.4.** O ASG faz triagem heurística. Não é antivírus nem EDR. Um achado não prova
+> **Status: protótipo defensivo 0.5.** O ASG faz triagem heurística. Não é antivírus nem EDR. Um achado não prova
 > malware, e um resultado limpo não garante segurança. Leia as [limitações](#%EF%B8%8F-limitações).
 
 ## 🚀 Instalação em um comando
@@ -102,7 +102,7 @@ Um único comando deixa a ferramenta pronta dentro do seu agente, sem nenhuma co
 | **Hook antes de instalar** (`PreToolUse`) | instalação direta do GitHub → **pede confirmação** | instalação direta do GitHub → **bloqueia e explica** |
 | **Hook ao abrir sessão** (`SessionStart`) | analisa plugins/skills novos ou alterados | analisa skills novas ou alteradas |
 | **Comando `asg`** | `~/.asg-security-guardian/bin/` | idem |
-| **Painel local** `dashboard.html` | aba **Análises** + aba **Ações** (bloqueios, confirmações, quarentena, integridade) | idem |
+| **ASG Security Center** `dashboard.html` | central de proteção: status, escudos, ameaças, atividade, quarentena | idem |
 | **Primeira análise** | das extensões que você já tem | idem |
 
 Seus hooks e configurações existentes são preservados, e um backup é criado antes de qualquer alteração.
@@ -159,14 +159,43 @@ autorizado e registra evidências.
 
 <img src="docs/images/codex-hook.png" alt="Hook do ASG no Codex" width="880">
 
-**Painel local (`asg dashboard --open`)**
+### ASG Security Center: o painel gerado na instalação
 
-<img src="docs/images/dashboard.png" alt="Painel do ASG com três análises" width="880">
+`asg dashboard --open` abre a **central de proteção**: um único arquivo HTML local, sem internet e sem dependências,
+que o ASG atualiza sozinho a cada análise. É inspirado nos consoles de antivírus, mas mostra só o que importa para
+quem trabalha com agentes de IA.
 
-**Painel de ações: o que foi bloqueado, confirmado e colocado em quarentena (`asg dashboard --actions`)**
+<img src="docs/images/dashboard.png" alt="ASG Security Center — visão geral" width="880">
 
-Cada decisão do ASG fica num registro de auditoria local encadeado por hashes. A aba **Ações** mostra a linha do
-tempo, os totais e se o registro continua íntegro:
+| Seção | O que mostra |
+|---|---|
+| 🛡️ **Visão geral** | escudo de status (**protegido**, **atenção necessária** ou **proteção incompleta**), totais, atividade dos últimos 14 dias, achados por severidade, regras mais acionadas, escudos ativos e ameaças recentes. O botão **Analisar agora** mostra o comando pronto para copiar. |
+| 🔎 **Análises** | cada repositório analisado, com veredito, achados e link para o relatório |
+| 🐞 **Ameaças** | todos os achados HIGH/CRITICAL de todas as análises, com filtro e marcação de indicador forte |
+| 📈 **Atividade** | linha do tempo de bloqueios, confirmações, análises, quarentena e integridade |
+| 📦 **Quarentena** | propostas e cópias, com os comandos para propor e aprovar |
+| ⚡ **Proteção** | estado de cada escudo por agente (Claude Code / Codex), integridade do Core, auditoria e onde ficam os dados |
+
+O painel tem tema claro e escuro (botão ☀ ou preferência do sistema) e funciona no celular.
+
+<table><tr>
+<td><img src="docs/images/center-overview-dark.png" alt="Visão geral no tema escuro" width="430"></td>
+<td><img src="docs/images/center-protection.png" alt="Tela Proteção" width="430"></td>
+</tr><tr>
+<td><img src="docs/images/center-threats.png" alt="Tela Ameaças" width="430"></td>
+<td><img src="docs/images/center-scans.png" alt="Tela Análises" width="430"></td>
+</tr></table>
+
+O status do escudo segue estas regras:
+- 🟢 **Protegido:** os escudos de download e de instalação estão ativos, o Core está íntegro, a auditoria está
+  íntegra e não há nada para revisar nos últimos 7 dias.
+- 🟠 **Atenção necessária:** há análise marcada para revisão ou inconclusiva nos últimos 7 dias.
+- 🔴 **Proteção incompleta:** algum escudo está desligado, o Core foi alterado ou o registro de auditoria foi alterado.
+
+**Atividade: o que foi bloqueado, confirmado e colocado em quarentena (`asg dashboard --actions`)**
+
+Cada decisão do ASG fica num registro de auditoria local encadeado por hashes. A tela **Atividade** mostra a linha
+do tempo, os totais e se o registro continua íntegro:
 
 | Evento | Quando aparece |
 |---|---|
@@ -177,7 +206,7 @@ tempo, os totais e se o registro continua íntegro:
 | 🧪 **Quarentena proposta / executada / negada** | o fluxo de aprovação da cópia para quarentena |
 | 🧷 **Baseline / verificação de integridade** | fotos de hashes e alterações detectadas |
 
-<img src="docs/images/dashboard-actions.png" alt="Aba Ações do painel do ASG" width="880">
+<img src="docs/images/dashboard-actions.png" alt="Tela Atividade do ASG Security Center" width="880">
 
 A mesma linha do tempo no terminal, com `asg log`:
 
@@ -239,8 +268,9 @@ aprovou, quais repositórios foram marcados para revisão e se o registro de aud
 | Comando | O que faz |
 |---|---|
 | `asg scan CAMINHO` | análise estática (relatório JSON + Markdown e painel atualizado) |
-| `asg dashboard --open` | abre o painel (aba Análises) |
-| `asg dashboard --actions` | abre o painel direto na aba Ações |
+| `asg dashboard --open` | abre o ASG Security Center |
+| `asg dashboard --actions` | abre direto na tela Atividade |
+| `asg dashboard --view threats` | abre direto numa tela (`overview`, `scans`, `threats`, `actions`, `quarantine`, `protection`) |
 | `asg log [--limit N] [--type TIPO]` | linha do tempo de bloqueios, confirmações, análises e quarentena no terminal |
 | `asg doctor` | verifica instalação, integridade, Skills e hooks |
 | `asg baseline CAMINHO` / `asg check CAMINHO` | foto dos hashes / comparação com a foto |
@@ -384,7 +414,7 @@ protection_core/
   asg_guard.py       scanner estático e relatórios
   asg_hook.py        hooks PreToolUse / PostToolUse / SessionStart
   asg_local.py       baseline, quarentena por cópia, auditoria
-  asg_dashboard.py   painel HTML local (Análises + Ações)
+  asg_dashboard.py   ASG Security Center (painel HTML local)
   asg_cli.py         comando `asg`
 install.py           instalador (Claude Code + Codex)
 install.ps1 / .sh    instalação em um comando

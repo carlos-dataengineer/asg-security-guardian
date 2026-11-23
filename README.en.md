@@ -23,7 +23,7 @@ ASG sits **between download and use**. As soon as the agent fetches something fr
 scan (it never executes anything) and shows you the verdict. When it finds strong indicators, it tells the agent
 to **stop and ask you** first.
 
-> **Status: defensive prototype 0.4.** Heuristic triage, not an antivirus or EDR. A finding is not proof of
+> **Status: defensive prototype 0.5.** Heuristic triage, not an antivirus or EDR. A finding is not proof of
 > malware, and a clean result is not a guarantee.
 
 ## Install in one command
@@ -73,7 +73,14 @@ Verdicts: **REVIEW** (strong indicators), **INCONCLUSIVE** (scan incomplete or c
 
 <img src="docs/images/codex-hook.png" alt="Codex: direct install denied, clone scanned" width="880">
 
-<img src="docs/images/dashboard.png" alt="ASG dashboard" width="880">
+**ASG Security Center** (`asg dashboard --open`) is a protection-center dashboard generated at install time. It is a single local HTML file: no network and no dependencies. It has six views:
+- **Overview:** shield status, KPIs, 14-day activity, severity mix, top rules, shields and recent threats.
+- **Scans**, **Threats**, **Activity** and **Quarantine**.
+- **Protection:** each shield per agent, core integrity and audit status.
+
+It supports light and dark themes and works on mobile.
+
+<img src="docs/images/dashboard.png" alt="ASG Security Center overview" width="880">
 
 **Actions tab** (`asg dashboard --actions`, or `asg log` in the terminal). Every ASG decision is written to a local
 hash-chained audit ledger, and this tab shows it as a timeline:
@@ -95,7 +102,7 @@ It also shows whether the ledger is still intact. Commands containing credential
 |---|---|
 | `/asg-security-guardian …` (Claude) · `$asg-security-guardian …` (Codex) | guided investigation |
 | `asg scan PATH` | static scan, report and dashboard refresh |
-| `asg dashboard --open` / `--actions` | open the dashboard (Scans / Actions tab) |
+| `asg dashboard --open` / `--actions` / `--view NAME` | open the Security Center (overview / activity / any view) |
 | `asg log [--limit N]` | timeline of blocks, confirmations, scans and quarantine |
 | `asg doctor` | installation and integrity check |
 | `asg baseline PATH` / `asg check PATH` / `asg watch PATH` | file-integrity snapshot, compare and watch |
